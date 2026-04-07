@@ -105,22 +105,6 @@ td.dc{font-weight:600;color:var(--text2);background:var(--surface2)}
 </style>
 </head>
 <body>
-   <div id="app" v-cloak>
-        <div v-if="!isAuthenticated" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-8">
-            <div class="w-full max-w-sm bg-white rounded-[2.5rem] p-10 shadow-2xl text-center">
-                <div class="w-20 h-20 bg-indigo-600 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-indigo-200 rotate-6">
-                    <i class="fa-solid fa-key text-3xl"></i>
-                </div>
-                <h1 class="text-2xl font-black text-slate-800 mb-2">藍波健康體能</h1>
-                <p class="text-slate-400 text-sm mb-10 tracking-widest uppercase">Employee Portal</p>
-                <div class="space-y-4">
-                    <input v-model="passwordInput" @keyup.enter="checkPassword" type="password" placeholder="請輸入存取密碼" 
-                           class="w-full px-6 py-5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 text-center text-lg">
-                    <button @click="checkPassword" class="w-full bg-slate-900 text-white font-bold py-5 rounded-2xl shadow-xl active:scale-95 transition-all">登入系統</button>
-                    <p v-if="loginError" class="text-red-500 text-xs font-bold mt-4 animate-bounce">密碼錯誤，請重新確認</p>
-                </div>
-            </div>
-        </div>
 <div class="header">
   <div class="header-brand"><div class="icon">💪</div><span>藍波健康體能｜管理報表系統</span></div>
   <div class="hc">
