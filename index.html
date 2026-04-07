@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>藍波健康體能 — 管理報表系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#f5f4f0;--surface:#fff;--surface2:#f0ede8;--border:#e0ddd8;--text:#1a1916;--text2:#6b6860;--text3:#9c9a96;--accent:#1E40AF;--accent-light:#DBEAFE;--green:#1a7a4a;--green-light:#e6f4ed;--red:#c0392b;--red-light:#fbeaea;--amber:#b45309;--amber-light:#fef3e0;--cost:#1565c0;--cost-light:#e3f2fd;--opex:#6a1b9a;--opex-light:#f3e5f5;--radius:10px;--radius-lg:16px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.header-brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700}
+.header-brand .icon{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px}
+.hc{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.hc select{padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);font-size:13px;background:var(--surface);font-family:inherit;cursor:pointer}
+.container{padding:20px 24px;max-width:1500px;margin:0 auto}
+@media(max-width:768px){.header{padding:0 12px;flex-wrap:wrap;height:auto;padding:8px 12px;gap:6px}.container{padding:12px}}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--surface2);padding:4px;border-radius:var(--radius);width:fit-content}
+.tab-btn{padding:7px 18px;border:none;background:transparent;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;color:var(--text2);transition:all .2s}
+.tab-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.tc{display:none}.tc.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;box-shadow:var(--shadow);margin-bottom:14px}
+.card-title{font-size:14px;font-weight:600;color:var(--text2);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.mc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow)}
+.mc.accent{background:var(--accent);border-color:var(--accent);color:#fff}
+.mc.green{background:var(--green);border-color:var(--green);color:#fff}
+.mc-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.accent .mc-label,.green .mc-label{color:rgba(255,255,255,.7)}
+.mc-val{font-size:22px;font-weight:700;letter-spacing:-.03em;font-family:'DM Mono',monospace}
+.mc-sub{font-size:11px;margin-top:3px;color:var(--text2)}
+.accent .mc-val,.accent .mc-sub,.green .mc-val,.green .mc-sub{color:#fff}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+th{padding:7px 8px;text-align:center;font-weight:600;color:var(--text2);border-bottom:2px solid var(--border);position:sticky;top:0;z-index:1;background:var(--surface2)}
+th.cost-h{background:var(--cost-light);color:var(--cost)}
+th.opex-h{background:var(--opex-light);color:var(--opex)}
+td{padding:5px 7px;text-align:center;border-bottom:1px solid var(--border)}
+tr:hover td{background:var(--accent-light)}
+tr.total-row td{background:var(--surface2);font-weight:700;border-top:2px solid var(--border)}
+td.ed{cursor:pointer}td.ed:hover{background:var(--amber-light)}
+td.ed input,td.ed select{width:100%;border:2px solid var(--accent);border-radius:4px;padding:2px 5px;font-size:12px;font-family:'DM Mono',monospace;text-align:right;outline:none;background:#fff}
+td.ed input[type=text],td.ed select{text-align:left}
+td.dc{font-weight:600;color:var(--text2);background:var(--surface2)}
+.vp{color:var(--green)}.vn{color:var(--red)}.vz{color:var(--text3)}
+.mono{font-family:'DM Mono',monospace}
+.btn{padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;color:var(--text);transition:all .15s}
+.btn:hover{background:var(--surface2)}
+.btn-p{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-p:hover{opacity:.9}
+.btn-d{color:var(--red);border-color:var(--red)}.btn-d:hover{background:var(--red-light)}
+.btn-s{padding:3px 8px;font-size:11px}
+.btn-ex{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-im{background:var(--amber);color:#fff;border-color:var(--amber)}
+.btn-cost{background:var(--cost);color:#fff;border-color:var(--cost)}
+.btn-opex{background:var(--opex);color:#fff;border-color:var(--opex)}
+.pnl{width:100%;border-collapse:collapse;font-size:13px}
+.pnl th,.pnl td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--border)}
+.pnl th{background:var(--surface2);font-weight:600}
+.pnl .sh{font-weight:700}
+.pnl .sh-cost{background:var(--cost-light);color:var(--cost)}
+.pnl .sh-opex{background:var(--opex-light);color:var(--opex)}
+.pnl .sh-rev{background:var(--accent-light);color:var(--accent)}
+.pnl .sub{font-weight:700;border-top:2px solid var(--border)}
+.pnl .gt{font-weight:700;font-size:15px;background:var(--green-light);color:var(--green)}
+.pnl td.amt{text-align:right;font-family:'DM Mono',monospace}
+.pnl td.pct{text-align:right;color:var(--text3);font-size:12px}
+.pnl td.ep{cursor:pointer}.pnl td.ep:hover{background:var(--amber-light)}
+.pnl td.ep input{width:100px;border:2px solid var(--accent);border-radius:4px;padding:3px 7px;font-size:13px;font-family:'DM Mono',monospace;text-align:right;outline:none}
+.modal-o{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-o.show{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:90%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{margin-bottom:14px;font-size:15px}
+.modal input,.modal select{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:14px;margin-bottom:10px}
+.modal-a{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.toast{position:fixed;bottom:20px;right:20px;padding:9px 18px;background:var(--green);color:#fff;border-radius:var(--radius);font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.15);opacity:0;transition:opacity .3s;pointer-events:none;z-index:300}
+.toast.show{opacity:1}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+@media(max-width:860px){.charts-row{grid-template-columns:1fr}}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow)}
+.chart-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px}
+.progress-bar{height:22px;background:var(--surface2);border-radius:11px;overflow:hidden;margin:6px 0}
+.progress-fill{height:100%;border-radius:11px;transition:width .6s;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:10px;font-weight:700;color:#fff;min-width:36px}
+.pf-low{background:var(--red)}.pf-mid{background:var(--amber)}.pf-high{background:var(--green)}
+.cat-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.cat-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.cat-tag.cost{background:var(--cost-light);color:var(--cost)}
+.cat-tag.opex{background:var(--opex-light);color:var(--opex)}
+.cat-tag .x{cursor:pointer;font-size:14px;line-height:1;opacity:.6}.cat-tag .x:hover{opacity:1}
+.store-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.store-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;background:var(--accent-light);color:var(--accent)}
+.store-tag .x{cursor:pointer;font-size:14px;line-height:1;opacity:.6}.store-tag .x:hover{opacity:1}
+.setup-box{text-align:center;padding:60px 20px;color:var(--text2)}
+.setup-box h2{margin-bottom:12px;color:var(--text)}
+.weather-sel{width:60px!important;text-align:center!important;font-size:12px!important;padding:2px 4px!important}
+.help-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 22px;margin-top:16px;font-size:13px;color:var(--text2);line-height:1.8}
+.help-box h4{color:var(--text);margin-bottom:8px;font-size:14px}
+.help-box ul{padding-left:20px}
+.help-box li{margin-bottom:2px}
+.group-label{font-size:11px;font-weight:700;padding:4px 8px;text-align:center}
+.group-label.cost-g{background:var(--cost);color:#fff}
+.group-label.opex-g{background:var(--opex);color:#fff}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-brand"><div class="icon">💪</div><span>藍波健康體能｜管理報表系統</span></div>
+  <div class="hc">
+    <select id="storeSel" onchange="changeStore()"></select>
+    <select id="ySel" onchange="changeYM()"></select>
+    <select id="mSel" onchange="changeYM()"></select>
+    <button class="btn btn-s" onclick="showModal('storeMod')">管理事業體</button>
+    <button class="btn btn-s" onclick="showModal('catMod')">管理支出欄位</button>
+    <button class="btn btn-s btn-ex" onclick="exportExcel()">匯出Excel</button>
+    <button class="btn btn-s" onclick="exportJSON()">備份資料</button>
+    <button class="btn btn-s btn-im" onclick="$('impF').click()">匯入</button>
+    <input type="file" id="impF" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="btn btn-s" id="syncBtn" onclick="showModal('syncMod')" style="background:#10b981;color:#fff;border-color:#10b981">⟲ 同步</button>
+  </div>
+</div>
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="sw('daily')">日報表</button>
+    <button class="tab-btn" onclick="sw('expense')">收支表</button>
+    <button class="tab-btn" onclick="sw('pnl')">損益表</button>
+    <button class="tab-btn" onclick="sw('monthly')">月報總覽</button>
+  </div>
+  <div id="noStore" class="setup-box" style="display:none"><h2>請先新增事業體</h2><p>點擊右上角「管理事業體」開始</p></div>
+
+  <!-- Tab1: 日報表 -->
+  <div id="t-daily" class="tc active">
+    <div class="metrics" id="dMet"></div>
+    <div class="card">
+      <div class="card-title"><span>日報表</span></div>
+      <div class="tw"><table><thead id="dH"></thead><tbody id="dB"></tbody></table></div>
+    </div>
+    <div class="help-box">
+      <h4>日報表使用說明</h4>
+      <ul>
+        <li><b>本日預估營收</b>：依排課數量和預約狀態，填入當天營收目標</li>
+        <li><b>本日實際營收</b>：當日結算後填入實際營收（教練課+團課+自主訓練+保健品+場租）</li>
+        <li><b>本日學員數</b>：當日上課學員人次（含團課、一對一、一對二、自主訓練）</li>
+        <li><b>達成率 / 客單價 / 月營收累計 / 累計達成率</b>：系統自動計算</li>
+        <li><b>天氣</b>：天氣影響中高齡學員出席率，記錄後可分析趨勢</li>
+        <li><b>編輯方式</b>：點擊任何「-」欄位即可輸入數字，按 Enter 儲存</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Tab2: 收支表 -->
+  <div id="t-expense" class="tc">
+    <div class="metrics" id="eMet"></div>
+    <div class="card">
+      <div class="card-title"><span>月收支紀錄</span></div>
+      <div class="tw"><table><thead id="eH"></thead><tbody id="eB"></tbody></table></div>
+    </div>
+    <div class="help-box">
+      <h4>收支表使用說明</h4>
+      <ul>
+        <li><b>藍色欄位（直接成本）</b>：每日進貨的原物料費用，如蛋、牛奶、麵包等</li>
+        <li><b>紫色欄位（營業費用）</b>：場館日常營運費用，如水電、清潔、耗材等</li>
+        <li><b>營業額 / 其他收入</b>：與日報表同步，填其中一邊即可</li>
+        <li><b>日損益</b>：= 營業額 + 其他收入 - 當日所有支出（自動計算）</li>
+        <li><b>新增/刪除欄位</b>：點擊右上角「管理支出欄位」可自訂成本和管銷的分類項目</li>
+        <li><b>編輯方式</b>：點擊任何「-」欄位即可輸入金額，按 Enter 或點擊其他地方自動儲存</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Tab3: 損益表 -->
+  <div id="t-pnl" class="tc">
+    <div class="card">
+      <div class="card-title"><span id="pnlT">損益表</span>
+        <button class="btn btn-s" onclick="showModal('fixMod')">+ 新增固定費用</button>
+      </div>
+      <table class="pnl" id="pnlTbl"></table>
+    </div>
+    <div class="help-box">
+      <h4>損益表使用說明</h4>
+      <ul>
+        <li><b>營業收入 / 直接成本</b>：自動從日報表和收支表彙總，無需手動填寫</li>
+        <li><b>營業費用（日常）</b>：自動從收支表的紫色欄位彙總</li>
+        <li><b>固定費用</b>：點擊「+ 新增固定費用」新增每月固定支出（場租、保險、記帳費、律師費等）</li>
+        <li><b>編輯固定費用金額</b>：點擊金額數字即可修改，按 Enter 儲存</li>
+        <li><b>百分比</b>：各項目佔營業總額的比例（自動計算）</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Tab4: 月報總覽 -->
+  <div id="t-monthly" class="tc">
+    <div class="card">
+      <div class="card-title"><span>月報總覽</span></div>
+      <div class="tw"><table><thead id="moH"></thead><tbody id="moB"></tbody></table></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><div class="chart-title">月營收趨勢</div><canvas id="chMo"></canvas></div>
+      <div class="chart-card"><div class="chart-title">月達成率趨勢</div><canvas id="chAch"></canvas></div>
+    </div>
+    <div class="help-box">
+      <h4>月報總覽使用說明</h4>
+      <ul>
+        <li>此頁面自動彙整所有月份的數據，方便對比不同月份的營業表現</li>
+        <li>資料來源：每個月的日報表和收支表填寫越完整，統計越準確</li>
+        <li>圖表會在累積 2 個月以上的資料後自動顯示月營收趨勢和達成率曲線</li>
+        <li><b>匯入資料</b>：可將其他事業體匯出的 JSON 檔匯入，資料會自動累積</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Store Modal -->
+<div class="modal-o" id="storeMod"><div class="modal">
+  <h3>管理事業體</h3>
+  <div id="storeList" class="store-list"></div>
+  <input id="newStore" placeholder="輸入事業體名稱（如：藍波健康體能、保健品通路）">
+  <div class="modal-a"><button class="btn" onclick="hideModal('storeMod')">關閉</button><button class="btn btn-p" onclick="addStore()">新增</button></div>
+</div></div>
+
+<!-- Category Modal -->
+<div class="modal-o" id="catMod"><div class="modal">
+  <h3>管理支出欄位</h3>
+  <p style="font-size:12px;color:var(--text2);margin-bottom:10px">直接成本 = 教練薪資/保健品進貨等（藍色）、營業費用 = 廣告/工具/水電等（紫色）</p>
+  <div id="catList" class="cat-list"></div>
+  <input id="newCat" placeholder="欄位名稱">
+  <select id="newCatType"><option value="cost">直接成本（教練/進貨）</option><option value="opex">營業費用（管銷）</option></select>
+  <div class="modal-a"><button class="btn" onclick="hideModal('catMod')">關閉</button><button class="btn btn-p" onclick="addCat()">新增</button></div>
+</div></div>
+
+<!-- Fixed Expense Modal -->
+<div class="modal-o" id="fixMod"><div class="modal">
+  <h3>新增固定費用</h3>
+  <input id="fixName" placeholder="費用名稱">
+  <input id="fixAmt" type="number" placeholder="金額" value="0">
+  <div class="modal-a"><button class="btn" onclick="hideModal('fixMod')">關閉</button><button class="btn btn-p" onclick="addFix()">新增</button></div>
+</div></div>
+
+<!-- Google Sheets 同步設定 Modal -->
+<div class="modal-o" id="syncMod"><div class="modal" style="max-width:480px">
+  <h3>從 Google Sheets 同步</h3>
+  <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6">首次使用請先設定 Web App 網址和金鑰，之後按「立即同步」就會自動拉取最新資料。</p>
+  <label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:4px">Apps Script Web App 網址</label>
+  <input id="syncUrl" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:12px;font-family:'DM Mono',monospace">
+  <label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:4px">安全金鑰</label>
+  <input id="syncKey" placeholder="跟 Apps Script 裡 SECRET_KEY 一樣" style="font-size:12px;font-family:'DM Mono',monospace">
+  <div id="syncStatus" style="font-size:12px;color:var(--text2);margin:10px 0;min-height:18px"></div>
+  <div class="modal-a">
+    <button class="btn" onclick="hideModal('syncMod')">關閉</button>
+    <button class="btn" onclick="saveSyncConfig()">儲存設定</button>
+    <button class="btn btn-p" onclick="syncFromGoogleSheets()">立即同步</button>
+  </div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DB='RamboReport1',VER=1;
+const DAYS=['日','一','二','三','四','五','六'];
+const WEATHERS=['','晴','陰天','雨天','颱風'];
+let db,charts={};
+let S={stores:[],cats:[],storeId:null,year:new Date().getFullYear(),month:new Date().getMonth()+1,daily:[],fixedExp:[],allMonths:[]};
+
+// === DB ===
+function openDB(){return new Promise((res,rej)=>{
+  const r=indexedDB.open(DB,VER);
+  r.onupgradeneeded=e=>{
+    const d=e.target.result;
+    if(!d.objectStoreNames.contains('stores'))d.createObjectStore('stores',{keyPath:'id',autoIncrement:true});
+    if(!d.objectStoreNames.contains('categories')){const s=d.createObjectStore('categories',{keyPath:'id',autoIncrement:true});s.createIndex('type','type');}
+    if(!d.objectStoreNames.contains('daily')){const s=d.createObjectStore('daily',{keyPath:'id',autoIncrement:true});s.createIndex('s_ym',['store_id','ym']);s.createIndex('s_d',['store_id','date'],{unique:true});}
+    if(!d.objectStoreNames.contains('fixed_exp')){const s=d.createObjectStore('fixed_exp',{keyPath:'id',autoIncrement:true});s.createIndex('s_ym',['store_id','year','month']);}
+  };
+  r.onsuccess=e=>{db=e.target.result;res();};
+  r.onerror=e=>rej(e.target.error);
+});}
+const tx=(s,m='readonly')=>db.transaction(s,m).objectStore(s);
+const rw=s=>tx(s,'readwrite');
+const iAll=s=>new Promise((r,j)=>{const q=tx(s).getAll();q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});
+const iPut=(s,d)=>new Promise((r,j)=>{const q=rw(s).put(d);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});
+const iAdd=(s,d)=>new Promise((r,j)=>{const q=rw(s).add(d);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});
+const iDel=(s,k)=>new Promise((r,j)=>{const q=rw(s).delete(k);q.onsuccess=()=>r();q.onerror=()=>j(q.error);});
+const iIdx=(s,i,k)=>new Promise((r,j)=>{const q=tx(s).index(i).getAll(k);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);});
+
+// === Init ===
+async function init(){
+  await openDB();
+  S.stores=await iAll('stores');
+  S.cats=await iAll('categories');
+  if(!S.cats.length){
+    const defs=[['教練薪資（承攬）','cost'],['教練薪資（正職）','cost'],['教練獎金','cost'],['保健品進貨成本','cost'],['器材維護/耗材','cost'],['廣告投放（Meta）','opex'],['廣告投放（Google）','opex'],['Podcast製作費','opex'],['AI工具訂閱','opex'],['水電/網路','opex'],['清潔/消耗品','opex'],['活動/比賽費用','opex'],['其他支出','opex']];
+    for(const[n,t]of defs)await iAdd('categories',{name:n,type:t});
+    S.cats=await iAll('categories');
+  }
+  if(S.stores.length){S.storeId=S.stores[0].id;}
+  fillSel();
+  if(S.storeId)await loadAll();
+  else showNoStore();
+}
+
+function fillSel(){
+  const ss=$('storeSel');
+  ss.innerHTML=S.stores.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  if(S.storeId)ss.value=S.storeId;
+  const ys=$('ySel'),cy=new Date().getFullYear();
+  ys.innerHTML='';for(let y=cy-5;y<=cy+1;y++)ys.innerHTML+=`<option value="${y}">${y}年</option>`;
+  ys.value=S.year;
+  const ms=$('mSel');ms.innerHTML='';
+  for(let m=1;m<=12;m++)ms.innerHTML+=`<option value="${m}">${m}月</option>`;
+  ms.value=S.month;
+}
+
+function changeStore(){S.storeId=+$('storeSel').value;loadAll();}
+function changeYM(){S.year=+$('ySel').value;S.month=+$('mSel').value;loadAll();}
+
+function showNoStore(){
+  $('noStore').style.display='block';
+  document.querySelectorAll('.tc').forEach(t=>t.style.display='none');
+}
+
+async function loadAll(){
+  if(!S.storeId)return showNoStore();
+  $('noStore').style.display='none';
+  document.querySelectorAll('.tc').forEach(t=>t.style.display='');
+  const ym=ymS(S.year,S.month);
+  const allD=await iIdx('daily','s_ym',[S.storeId,ym]);
+  const map={};allD.forEach(r=>map[r.date]=r);
+  const dim=new Date(S.year,S.month,0).getDate();
+  S.daily=[];
+  for(let d=1;d<=dim;d++){
+    const ds=`${ym}-${String(d).padStart(2,'0')}`;
+    if(map[ds])S.daily.push(map[ds]);
+    else S.daily.push({store_id:S.storeId,date:ds,ym,pred_rev:0,revenue:0,other_income:0,customers:0,weather:'',note:'',expenses:{}});
+  }
+  S.fixedExp=await iIdx('fixed_exp','s_ym',[S.storeId,S.year,S.month]);
+  renderDaily();renderExpense();renderPnl();
+}
+
+// === Helpers ===
+function $(id){return document.getElementById(id)}
+function fN(n){return(n||0).toLocaleString('zh-TW')}
+function ymS(y,m){return`${y}-${String(m).padStart(2,'0')}`}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+function showModal(id){$(id).classList.add('show');if(id==='storeMod')renderStoreList();if(id==='catMod')renderCatList();}
+function hideModal(id){$(id).classList.remove('show')}
+function costCats(){return S.cats.filter(c=>c.type==='cost')}
+function opexCats(){return S.cats.filter(c=>c.type==='opex')}
+function dayOfWeek(ds){return DAYS[new Date(ds).getDay()]}
+function isWeekend(ds){const d=new Date(ds).getDay();return d===0||d===6;}
+
+function sw(t){
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    const map={daily:'日報表',expense:'收支表',pnl:'損益表',monthly:'月報總覽'};
+    b.classList.toggle('active',b.textContent===map[t]);
+  });
+  document.querySelectorAll('.tc').forEach(c=>c.classList.remove('active'));
+  $(`t-${t}`).classList.add('active');
+  if(t==='monthly')loadMonthly();
+}
+
+async function saveDay(rec){
+  if(!rec.ym)rec.ym=ymS(S.year,S.month);
+  if(!rec.store_id)rec.store_id=S.storeId;
+  if(rec.id)await iPut('daily',rec);
+  else rec.id=await iAdd('daily',rec);
+}
+
+function editCell(td,idx,field,type='num'){
+  if(td.querySelector('input')||td.querySelector('select'))return;
+  const rec=S.daily[idx],old=rec[field]||(type==='text'?'':0);
+  if(type==='weather'){
+    const sel=document.createElement('select');sel.className='weather-sel';
+    WEATHERS.forEach(w=>{const o=document.createElement('option');o.value=w;o.textContent=w||'-';sel.appendChild(o);});
+    sel.value=old;td.textContent='';td.appendChild(sel);sel.focus();
+    const sv=async()=>{rec[field]=sel.value;await saveDay(rec);renderDaily();renderExpense();toast('已儲存');};
+    sel.onchange=sv;sel.onblur=sv;return;
+  }
+  const inp=document.createElement('input');
+  inp.type=type==='text'?'text':'number';inp.value=type==='text'?old:(old||'');
+  if(type==='num')inp.step='any';
+  td.textContent='';td.appendChild(inp);inp.focus();inp.select();
+  const sv=async()=>{
+    rec[field]=type==='text'?inp.value:(parseFloat(inp.value)||0);
+    await saveDay(rec);renderDaily();renderExpense();renderPnl();toast('已儲存');
+  };
+  inp.onblur=sv;inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){td.innerHTML=type==='text'?(old||''):cv(old);}};
+}
+
+function editExp(td,idx,catId){
+  if(td.querySelector('input'))return;
+  const rec=S.daily[idx],old=(rec.expenses&&rec.expenses[catId])||0;
+  const inp=document.createElement('input');inp.type='number';inp.step='any';inp.value=old||'';
+  td.textContent='';td.appendChild(inp);inp.focus();inp.select();
+  const sv=async()=>{
+    if(!rec.expenses)rec.expenses={};
+    rec.expenses[catId]=parseFloat(inp.value)||0;
+    await saveDay(rec);renderExpense();renderPnl();toast('已儲存');
+  };
+  inp.onblur=sv;inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')td.innerHTML=cv(old);};
+}
+
+function cv(v){return v?`<span class="mono">${fN(v)}</span>`:'<span class="vz">-</span>';}
+function pct(a,b){return b?(a/b*100).toFixed(2)+'%':'0%'}
+
+// === TAB 1: 日報表 ===
+function renderDaily(){
+  const d=S.daily;
+  const tRev=d.reduce((s,r)=>s+(r.revenue||0),0);
+  const tPred=d.reduce((s,r)=>s+(r.pred_rev||0),0);
+  const tCust=d.reduce((s,r)=>s+(r.customers||0),0);
+  const dw=d.filter(r=>r.revenue>0).length;
+  const achPct=tPred?Math.round(tRev/tPred*100):0;
+  $('dMet').innerHTML=`
+    <div class="mc accent"><div class="mc-label">月累計營收</div><div class="mc-val">$${fN(tRev)}</div><div class="mc-sub">預估 $${fN(tPred)}</div></div>
+    <div class="mc ${achPct>=100?'green':''}"><div class="mc-label">累計達成率</div><div class="mc-val">${achPct}%</div></div>
+    <div class="mc"><div class="mc-label">日均營收</div><div class="mc-val">$${fN(dw?Math.round(tRev/dw):0)}</div><div class="mc-sub">${dw} 個營業日</div></div>
+    <div class="mc"><div class="mc-label">日均學員 / 客單價</div><div class="mc-val">${dw?Math.round(tCust/dw):0}人</div><div class="mc-sub">客單價 $${tCust?Math.round(tRev/tCust):0}</div></div>`;
+
+  $('dH').innerHTML=`<tr><th>日期</th><th>星期</th><th>本日預估營收</th><th>本日實際營收</th><th>達成率</th><th>本日學員數</th><th>本日客單價</th><th>月營收累計</th><th>月營收預估總計</th><th>累計達成率</th><th>天氣</th><th>備註</th></tr>`;
+
+  let cumRev=0,cumPred=0,h='';
+  d.forEach((r,i)=>{
+    const day=new Date(r.date).getDate();
+    const dow=dayOfWeek(r.date);
+    const wknd=isWeekend(r.date);
+    const ach=r.pred_rev?(r.revenue/r.pred_rev*100).toFixed(2)+'%':'-';
+    const ticket=r.customers?Math.round(r.revenue/r.customers):0;
+    cumRev+=r.revenue||0;cumPred+=r.pred_rev||0;
+    const cumAch=cumPred?((cumRev/cumPred*100).toFixed(2)+'%'):'-';
+    const achClass=r.pred_rev?((r.revenue/r.pred_rev)>=1?'vp':'vn'):'vz';
+    const cumClass=cumPred?((cumRev/cumPred)>=1?'vp':'vn'):'vz';
+    h+=`<tr>
+      <td class="dc">${day}</td>
+      <td class="ed" onclick="editCell(this,${i},'dow','text')" style="${wknd?'color:var(--red);font-weight:600;background:#fff5f5':''}">${r.dow||dow}</td>
+      <td class="ed" onclick="editCell(this,${i},'pred_rev')">${cv(r.pred_rev)}</td>
+      <td class="ed" onclick="editCell(this,${i},'revenue')">${cv(r.revenue)}</td>
+      <td class="${achClass} mono" style="font-weight:600">${ach}</td>
+      <td class="ed" onclick="editCell(this,${i},'customers')">${cv(r.customers)}</td>
+      <td class="mono">${ticket?fN(ticket):'-'}</td>
+      <td class="mono" style="font-weight:600">${cumRev?fN(cumRev):'-'}</td>
+      <td class="mono">${tPred?fN(tPred):'-'}</td>
+      <td class="${cumClass} mono" style="font-weight:600">${cumAch}</td>
+      <td class="ed" onclick="editCell(this,${i},'weather','weather')">${r.weather||'-'}</td>
+      <td class="ed" onclick="editCell(this,${i},'note','text')" style="text-align:left;max-width:100px;overflow:hidden;text-overflow:ellipsis">${r.note||''}</td>
+    </tr>`;
+  });
+  // Total row
+  const tAch=tPred?(tRev/tPred*100).toFixed(2)+'%':'-';
+  const tTicket=tCust?Math.round(tRev/tCust):0;
+  h+=`<tr class="total-row"><td>合計</td><td></td><td class="mono">${fN(tPred)}</td><td class="mono">${fN(tRev)}</td><td class="mono">${tAch}</td><td class="mono">${fN(tCust)}</td><td class="mono">${tTicket?fN(tTicket):'-'}</td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  $('dB').innerHTML=h;
+}
+
+// === TAB 2: 收支表 ===
+function renderExpense(){
+  const cc=costCats(),oc=opexCats(),d=S.daily;
+  const tRev=d.reduce((s,r)=>s+(r.revenue||0),0);
+  const tOI=d.reduce((s,r)=>s+(r.other_income||0),0);
+  const tCost=d.reduce((s,r)=>s+cc.reduce((ss,c)=>ss+((r.expenses&&r.expenses[c.id])||0),0),0);
+  const tOpex=d.reduce((s,r)=>s+oc.reduce((ss,c)=>ss+((r.expenses&&r.expenses[c.id])||0),0),0);
+  const tExp=tCost+tOpex;
+  const pnl=tRev+tOI-tExp;
+
+  $('eMet').innerHTML=`
+    <div class="mc accent"><div class="mc-label">營業額</div><div class="mc-val">$${fN(tRev)}</div><div class="mc-sub">其他收入 $${fN(tOI)}</div></div>
+    <div class="mc" style="border-left:3px solid var(--cost)"><div class="mc-label">直接成本</div><div class="mc-val">$${fN(tCost)}</div></div>
+    <div class="mc" style="border-left:3px solid var(--opex)"><div class="mc-label">營業費用合計</div><div class="mc-val">$${fN(tOpex)}</div></div>
+    <div class="mc ${pnl>=0?'green':''}" style="${pnl<0?'background:var(--red);border-color:var(--red);color:#fff':''}"><div class="mc-label">本月損益</div><div class="mc-val">$${fN(pnl)}</div></div>`;
+
+  let hdr=`<tr><th rowspan="2">日期</th><th rowspan="2">營業額</th><th rowspan="2">其他收入</th>`;
+  if(cc.length)hdr+=`<th colspan="${cc.length}" class="group-label cost-g">直接成本</th>`;
+  if(oc.length)hdr+=`<th colspan="${oc.length}" class="group-label opex-g">營業費用</th>`;
+  hdr+=`<th rowspan="2">學員數</th><th rowspan="2">日損益</th><th rowspan="2">備註</th></tr><tr>`;
+  cc.forEach(c=>{hdr+=`<th class="cost-h">${c.name}</th>`;});
+  oc.forEach(c=>{hdr+=`<th class="opex-h">${c.name}</th>`;});
+  hdr+=`</tr>`;
+  $('eH').innerHTML=hdr;
+
+  const tots={revenue:0,other_income:0,customers:0};
+  const catTots={};[...cc,...oc].forEach(c=>catTots[c.id]=0);
+  let totPnl=0,h='';
+
+  d.forEach((r,i)=>{
+    const day=new Date(r.date).getDate();
+    const dCost=cc.reduce((s,c)=>s+((r.expenses&&r.expenses[c.id])||0),0);
+    const dOpex=oc.reduce((s,c)=>s+((r.expenses&&r.expenses[c.id])||0),0);
+    const dPnl=(r.revenue||0)+(r.other_income||0)-dCost-dOpex;
+    tots.revenue+=r.revenue||0;tots.other_income+=r.other_income||0;tots.customers+=r.customers||0;
+    [...cc,...oc].forEach(c=>catTots[c.id]+=(r.expenses&&r.expenses[c.id])||0);
+    totPnl+=dPnl;
+    const pc=dPnl>0?'vp':dPnl<0?'vn':'vz';
+    h+=`<tr><td class="dc">${day}</td>`;
+    h+=`<td class="ed" onclick="editCell(this,${i},'revenue')">${cv(r.revenue)}</td>`;
+    h+=`<td class="ed" onclick="editCell(this,${i},'other_income')">${cv(r.other_income)}</td>`;
+    cc.forEach(c=>{h+=`<td class="ed" onclick="editExp(this,${i},${c.id})" style="background:rgba(21,101,192,.03)">${cv((r.expenses&&r.expenses[c.id])||0)}</td>`;});
+    oc.forEach(c=>{h+=`<td class="ed" onclick="editExp(this,${i},${c.id})" style="background:rgba(106,27,154,.03)">${cv((r.expenses&&r.expenses[c.id])||0)}</td>`;});
+    h+=`<td class="ed" onclick="editCell(this,${i},'customers')">${cv(r.customers)}</td>`;
+    h+=`<td class="${pc}" style="font-weight:600"><span class="mono">${dPnl?fN(dPnl):'-'}</span></td>`;
+    h+=`<td class="ed" onclick="editCell(this,${i},'note','text')" style="text-align:left;max-width:100px;overflow:hidden;text-overflow:ellipsis">${r.note||''}</td></tr>`;
+  });
+
+  const tpc=totPnl>0?'vp':totPnl<0?'vn':'vz';
+  h+=`<tr class="total-row"><td>合計</td><td class="mono">${fN(tots.revenue)}</td><td class="mono">${fN(tots.other_income)}</td>`;
+  cc.forEach(c=>{h+=`<td class="mono">${fN(catTots[c.id])}</td>`;});
+  oc.forEach(c=>{h+=`<td class="mono">${fN(catTots[c.id])}</td>`;});
+  h+=`<td class="mono">${fN(tots.customers)}</td><td class="${tpc} mono" style="font-weight:700">${fN(totPnl)}</td><td></td></tr>`;
+  $('eB').innerHTML=h;
+}
+
+// === TAB 3: 損益表 ===
+function renderPnl(){
+  const d=S.daily,cc=costCats(),oc=opexCats(),fe=S.fixedExp;
+  const rev=d.reduce((s,r)=>s+(r.revenue||0),0);
+  const oi=d.reduce((s,r)=>s+(r.other_income||0),0);
+  const ts=rev+oi;
+  const costTotal=d.reduce((s,r)=>s+cc.reduce((ss,c)=>ss+((r.expenses&&r.expenses[c.id])||0),0),0);
+  const opexDaily=d.reduce((s,r)=>s+oc.reduce((ss,c)=>ss+((r.expenses&&r.expenses[c.id])||0),0),0);
+  const gp=ts-costTotal;
+  const fixTotal=fe.reduce((s,f)=>s+(f.amount||0),0);
+  const totalOpex=opexDaily+fixTotal;
+  const op=gp-totalOpex;
+  const p=v=>ts?(v/ts*100).toFixed(2)+'%':'0%';
+
+  let h=`
+    <tr class="sh sh-rev"><td colspan="3">營業收入</td></tr>
+    <tr><td style="padding-left:28px">營業收入</td><td class="amt">${fN(rev)}</td><td class="pct">100%</td></tr>
+    <tr><td style="padding-left:28px">其他收入</td><td class="amt">${fN(oi)}</td><td class="pct"></td></tr>
+    <tr class="sub"><td>營業總額</td><td class="amt">${fN(ts)}</td><td class="pct"></td></tr>
+    <tr class="sh sh-cost"><td colspan="3">(-) 直接成本</td></tr>`;
+  const catCostTots={};
+  cc.forEach(c=>{const t=d.reduce((s,r)=>s+((r.expenses&&r.expenses[c.id])||0),0);catCostTots[c.id]=t;h+=`<tr><td style="padding-left:28px">${c.name}</td><td class="amt">${fN(t)}</td><td class="pct">${p(t)}</td></tr>`;});
+  h+=`<tr class="sub"><td>成本小計</td><td class="amt">${fN(costTotal)}</td><td class="pct">${p(costTotal)}</td></tr>
+    <tr class="sub"><td>營業毛利</td><td class="amt ${gp>=0?'vp':'vn'}">${fN(gp)}</td><td class="pct">${p(gp)}</td></tr>
+    <tr class="sh sh-opex"><td colspan="3">(-) 營業費用</td></tr>`;
+  oc.forEach(c=>{const t=d.reduce((s,r)=>s+((r.expenses&&r.expenses[c.id])||0),0);h+=`<tr><td style="padding-left:28px">${c.name}（日常）</td><td class="amt">${fN(t)}</td><td class="pct">${p(t)}</td></tr>`;});
+  fe.forEach(f=>{
+    h+=`<tr><td style="padding-left:28px">${f.name} <button class="btn btn-d btn-s" style="margin-left:6px;padding:1px 5px" onclick="delFix(${f.id})">x</button></td><td class="amt ep" onclick="editFix(this,${f.id})">${fN(f.amount)}</td><td class="pct">${p(f.amount)}</td></tr>`;
+  });
+  h+=`<tr class="sub"><td>營業費用合計</td><td class="amt">${fN(totalOpex)}</td><td class="pct">${p(totalOpex)}</td></tr>
+    <tr class="gt"><td>本期營業淨利</td><td class="amt">${fN(op)}</td><td class="pct">${p(op)}</td></tr>`;
+  $('pnlTbl').innerHTML=h;
+  $('pnlT').textContent=`損益表 — ${S.year}/${S.month}月`;
+}
+
+function editFix(td,id){
+  if(td.querySelector('input'))return;
+  const f=S.fixedExp.find(x=>x.id===id);
+  const inp=document.createElement('input');inp.type='number';inp.step='any';inp.value=f.amount||'';
+  td.textContent='';td.appendChild(inp);inp.focus();inp.select();
+  const sv=async()=>{f.amount=parseFloat(inp.value)||0;await iPut('fixed_exp',f);renderPnl();toast('已儲存');};
+  inp.onblur=sv;inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();};
+}
+
+async function delFix(id){
+  if(!confirm('確定刪除？'))return;
+  await iDel('fixed_exp',id);
+  S.fixedExp=S.fixedExp.filter(f=>f.id!==id);renderPnl();toast('已刪除');
+}
+
+async function addFix(){
+  const name=$('fixName').value.trim();if(!name)return;
+  const amt=parseFloat($('fixAmt').value)||0;
+  const obj={store_id:S.storeId,year:S.year,month:S.month,name,amount:amt};
+  obj.id=await iAdd('fixed_exp',obj);
+  S.fixedExp.push(obj);hideModal('fixMod');renderPnl();toast('已新增');
+}
+
+// === TAB 4: 月報總覽 ===
+async function loadMonthly(){
+  // Get all daily records for this store
+  const all=await iAll('daily');
+  const storeData=all.filter(r=>r.store_id===S.storeId);
+  const byYM={};
+  storeData.forEach(r=>{
+    if(!r.ym)return;
+    if(!byYM[r.ym])byYM[r.ym]={rev:0,pred:0,cust:0,days:0,oi:0,cost:0,opex:0};
+    const m=byYM[r.ym];
+    m.rev+=r.revenue||0;m.pred+=r.pred_rev||0;m.cust+=r.customers||0;m.oi+=r.other_income||0;
+    if(r.revenue>0)m.days++;
+    const cc=costCats(),oc=opexCats();
+    cc.forEach(c=>m.cost+=((r.expenses&&r.expenses[c.id])||0));
+    oc.forEach(c=>m.opex+=((r.expenses&&r.expenses[c.id])||0));
+  });
+  const months=Object.keys(byYM).sort();
+  $('moH').innerHTML=`<tr><th>月份</th><th>預估營收</th><th>實際營收</th><th>達成率</th><th>學員數</th><th>客單價</th><th>成本</th><th>管銷</th><th>毛利</th><th>營業日</th></tr>`;
+  let h='';
+  months.forEach(ym=>{
+    const m=byYM[ym];
+    const ach=m.pred?((m.rev/m.pred*100).toFixed(1)+'%'):'-';
+    const ticket=m.cust?Math.round(m.rev/m.cust):0;
+    const gp=m.rev+m.oi-m.cost;
+    const achC=m.pred?((m.rev/m.pred)>=1?'vp':'vn'):'vz';
+    h+=`<tr><td class="dc">${ym}</td><td class="mono">${fN(m.pred)}</td><td class="mono">${fN(m.rev)}</td><td class="${achC} mono" style="font-weight:600">${ach}</td><td class="mono">${fN(m.cust)}</td><td class="mono">${fN(ticket)}</td><td class="mono">${fN(m.cost)}</td><td class="mono">${fN(m.opex)}</td><td class="mono ${gp>=0?'vp':'vn'}">${fN(gp)}</td><td class="mono">${m.days}</td></tr>`;
+  });
+  $('moB').innerHTML=h||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:30px">尚無資料</td></tr>';
+
+  // Charts
+  if(months.length>1){
+    const labels=months,revs=months.map(m=>byYM[m].rev),achs=months.map(m=>byYM[m].pred?(byYM[m].rev/byYM[m].pred*100).toFixed(1):0);
+    const o={responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{font:{family:"'DM Mono'"}}},x:{ticks:{font:{family:"'DM Mono'"}}}}};
+    if(charts.mo)charts.mo.destroy();
+    charts.mo=new Chart($('chMo'),{type:'bar',data:{labels,datasets:[{data:revs,backgroundColor:'rgba(45,91,227,.7)',borderRadius:4}]},options:o});
+    if(charts.ach)charts.ach.destroy();
+    charts.ach=new Chart($('chAch'),{type:'line',data:{labels,datasets:[{data:achs,borderColor:'#1a7a4a',backgroundColor:'rgba(26,122,74,.1)',fill:true,tension:.3},{data:labels.map(()=>100),borderColor:'#c0392b',borderDash:[6,3],pointRadius:0,borderWidth:1}]},options:{...o,scales:{...o.scales,y:{...o.scales.y,suggestedMax:120}}}});
+  }
+}
+
+// === Store Management ===
+function renderStoreList(){
+  $('storeList').innerHTML=S.stores.map(s=>`<span class="store-tag">${s.name}<span class="x" onclick="delStore(${s.id})">×</span></span>`).join('');
+}
+async function addStore(){
+  const name=$('newStore').value.trim();if(!name)return;
+  try{await iAdd('stores',{name});}catch(e){toast('已存在');return;}
+  S.stores=await iAll('stores');
+  if(!S.storeId){S.storeId=S.stores[0].id;}
+  fillSel();renderStoreList();$('newStore').value='';
+  if(S.storeId)await loadAll();
+  toast('已新增');
+}
+async function delStore(id){
+  if(!confirm('確定刪除此事業體？（資料不會刪除）'))return;
+  await iDel('stores',id);
+  S.stores=await iAll('stores');
+  S.storeId=S.stores.length?S.stores[0].id:null;
+  fillSel();renderStoreList();
+  if(S.storeId)await loadAll();else showNoStore();
+  toast('已刪除');
+}
+
+// === Category Management ===
+function renderCatList(){
+  $('catList').innerHTML=S.cats.map(c=>`<span class="cat-tag ${c.type}">${c.name}<span class="x" onclick="delCat(${c.id})">×</span></span>`).join('');
+}
+async function addCat(){
+  const name=$('newCat').value.trim();if(!name)return;
+  const type=$('newCatType').value;
+  await iAdd('categories',{name,type});
+  S.cats=await iAll('categories');
+  renderCatList();$('newCat').value='';renderExpense();renderPnl();toast('已新增');
+}
+async function delCat(id){
+  if(!confirm('刪除此欄位？（已填資料會保留但不顯示）'))return;
+  await iDel('categories',id);
+  S.cats=await iAll('categories');
+  renderCatList();renderExpense();renderPnl();toast('已刪除');
+}
+
+// === Export / Import ===
+async function exportJSON(){
+  const data={version:3,exported_at:new Date().toISOString(),stores:await iAll('stores'),categories:await iAll('categories'),daily:await iAll('daily'),fixed_exp:await iAll('fixed_exp')};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`藍波報表備份_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();URL.revokeObjectURL(a.href);toast('已備份（JSON）');
+}
+async function exportExcel(){
+  const storeName=S.stores.find(s=>s.id===S.storeId)?.name||'事業體';
+  const ym=`${S.year}年${S.month}月`;
+  const cc=costCats(),oc=opexCats(),d=S.daily;
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: 日報表
+  const dHead=['日期','星期','本日預估營收','本日實際營收','達成率','本日學員數','本日客單價','月營收累計','月營收預估總計','累計達成率','天氣','備註'];
+  const dRows=[dHead];
+  let cumRev=0,cumPred=0;
+  const tPred=d.reduce((s,r)=>s+(r.pred_rev||0),0);
+  d.forEach(r=>{
+    const day=new Date(r.date).getDate();
+    const dow=r.dow||dayOfWeek(r.date);
+    const ach=r.pred_rev?(r.revenue/r.pred_rev):0;
+    const ticket=r.customers?Math.round(r.revenue/r.customers):0;
+    cumRev+=r.revenue||0;cumPred+=r.pred_rev||0;
+    const cumAch=cumPred?(cumRev/cumPred):0;
+    dRows.push([day,dow,r.pred_rev||0,r.revenue||0,ach,r.customers||0,ticket,cumRev,tPred,cumAch,r.weather||'',r.note||'']);
+  });
+  const ws1=XLSX.utils.aoa_to_sheet(dRows);
+  // Format percentage columns (E=4, J=9)
+  for(let i=1;i<=d.length;i++){
+    const eCell=XLSX.utils.encode_cell({r:i,c:4});
+    const jCell=XLSX.utils.encode_cell({r:i,c:9});
+    if(ws1[eCell])ws1[eCell].z='0.00%';
+    if(ws1[jCell])ws1[jCell].z='0.00%';
+  }
+  ws1['!cols']=[{wch:6},{wch:4},{wch:14},{wch:14},{wch:10},{wch:10},{wch:10},{wch:14},{wch:14},{wch:10},{wch:6},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws1,'日報表');
+
+  // Sheet 2: 收支表
+  const eHead=['日期','營業額','其他收入',...cc.map(c=>c.name),...oc.map(c=>c.name),'學員數','日損益','備註'];
+  const eRows=[eHead];
+  d.forEach(r=>{
+    const day=new Date(r.date).getDate();
+    const dCost=cc.reduce((s,c)=>s+((r.expenses&&r.expenses[c.id])||0),0);
+    const dOpex=oc.reduce((s,c)=>s+((r.expenses&&r.expenses[c.id])||0),0);
+    const dPnl=(r.revenue||0)+(r.other_income||0)-dCost-dOpex;
+    eRows.push([day,r.revenue||0,r.other_income||0,...cc.map(c=>(r.expenses&&r.expenses[c.id])||0),...oc.map(c=>(r.expenses&&r.expenses[c.id])||0),r.customers||0,dPnl,r.note||'']);
+  });
+  // Total row
+  const totRow=['合計',d.reduce((s,r)=>s+(r.revenue||0),0),d.reduce((s,r)=>s+(r.other_income||0),0)];
+  [...cc,...oc].forEach(c=>{totRow.push(d.reduce((s,r)=>s+((r.expenses&&r.expenses[c.id])||0),0));});
+  const totCust=d.reduce((s,r)=>s+(r.customers||0),0);
+  const totCostV=d.reduce((s,r)=>s+cc.reduce((ss,c)=>ss+((r.expenses&&r.expenses[c.id])||0),0),0);
+  const totOpexV=d.reduce((s,r)=>s+oc.reduce((ss,c)=>ss+((r.expenses&&r.expenses[c.id])||0),0),0);
+  const totPnlV=totRow[1]+totRow[2]-totCostV-totOpexV;
+  totRow.push(totCust,totPnlV,'');
+  eRows.push(totRow);
+  const ws2=XLSX.utils.aoa_to_sheet(eRows);
+  const eCols=[{wch:6},{wch:12},{wch:10}];
+  [...cc,...oc].forEach(()=>eCols.push({wch:12}));
+  eCols.push({wch:8},{wch:12},{wch:16});
+  ws2['!cols']=eCols;
+  XLSX.utils.book_append_sheet(wb,ws2,'收支表');
+
+  // Sheet 3: 損益表
+  const fe=S.fixedExp;
+  const rev=d.reduce((s,r)=>s+(r.revenue||0),0);
+  const oi=d.reduce((s,r)=>s+(r.other_income||0),0);
+  const ts=rev+oi;
+  const costTotal=d.reduce((s,r)=>s+cc.reduce((ss,c)=>ss+((r.expenses&&r.expenses[c.id])||0),0),0);
+  const opexDaily=d.reduce((s,r)=>s+oc.reduce((ss,c)=>ss+((r.expenses&&r.expenses[c.id])||0),0),0);
+  const gp=ts-costTotal;
+  const feTotal=fe.reduce((s,r)=>s+(r.amount||0),0);
+  const totalOpex=opexDaily+feTotal;
+  const np=gp-totalOpex;
+  const pRows=[
+    [`損益表 — ${storeName} ${ym}`],
+    [],
+    ['項目','金額','佔比'],
+    ['營業收入'],
+    ['  營業收入',rev,ts?'100%':'0%'],
+    ['  其他收入',oi,''],
+    ['營業總額',ts,''],
+    [],
+    ['(-) 直接成本'],
+  ];
+  cc.forEach(c=>{const v=d.reduce((s,r)=>s+((r.expenses&&r.expenses[c.id])||0),0);pRows.push(['  '+c.name,v,ts?(v/ts*100).toFixed(1)+'%':'0%']);});
+  pRows.push(['直接成本小計',costTotal,ts?(costTotal/ts*100).toFixed(1)+'%':'0%']);
+  pRows.push([]);
+  pRows.push(['營業毛利',gp,ts?(gp/ts*100).toFixed(1)+'%':'0%']);
+  pRows.push([]);
+  pRows.push(['(-) 營業費用（日常）']);
+  oc.forEach(c=>{const v=d.reduce((s,r)=>s+((r.expenses&&r.expenses[c.id])||0),0);pRows.push(['  '+c.name,v,ts?(v/ts*100).toFixed(1)+'%':'0%']);});
+  if(fe.length){pRows.push([]);pRows.push(['(-) 固定費用（月）']);fe.forEach(f=>{pRows.push(['  '+f.name,f.amount||0,ts?((f.amount||0)/ts*100).toFixed(1)+'%':'0%']);});}
+  pRows.push([]);
+  pRows.push(['營業費用合計',totalOpex,ts?(totalOpex/ts*100).toFixed(1)+'%':'0%']);
+  pRows.push([]);
+  pRows.push(['本期營業淨利',np,ts?(np/ts*100).toFixed(1)+'%':'0%']);
+  const ws3=XLSX.utils.aoa_to_sheet(pRows);
+  ws3['!cols']=[{wch:24},{wch:14},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws3,'損益表');
+
+  XLSX.writeFile(wb,`${storeName}_${S.year}年${S.month}月報表.xlsx`);
+  toast('已匯出 Excel');
+}
+async function importData(ev){
+  const file=ev.target.files[0];if(!file)return;
+  let data;try{data=JSON.parse(await file.text());}catch(e){toast('格式錯誤');return;}
+  if(!data.stores){toast('檔案不正確');return;}
+  if(!confirm('匯入將覆蓋現有所有資料，確定繼續？')){ev.target.value='';return;}
+  const cl=n=>new Promise(r=>{const t=db.transaction(n,'readwrite');t.objectStore(n).clear();t.oncomplete=r;});
+  await cl('stores');await cl('categories');await cl('daily');await cl('fixed_exp');
+  const idMap={};
+  for(const s of data.stores){const o=s.id;delete s.id;idMap[o]=await iAdd('stores',s);}
+  const catMap={};
+  for(const c of(data.categories||[])){const o=c.id;delete c.id;catMap[o]=await iAdd('categories',c);}
+  for(let r of(data.daily||[])){
+    delete r.id;
+    if(idMap[r.store_id]!==undefined)r.store_id=idMap[r.store_id];
+    // Remap expense category IDs
+    if(r.expenses){const ne={};for(const[k,v]of Object.entries(r.expenses)){ne[catMap[k]!==undefined?catMap[k]:k]=v;}r.expenses=ne;}
+    await iAdd('daily',r);
+  }
+  for(let r of(data.fixed_exp||[])){delete r.id;if(idMap[r.store_id]!==undefined)r.store_id=idMap[r.store_id];await iAdd('fixed_exp',r);}
+  S.stores=await iAll('stores');S.cats=await iAll('categories');
+  S.storeId=S.stores.length?S.stores[0].id:null;
+  fillSel();if(S.storeId)await loadAll();else showNoStore();
+  ev.target.value='';toast('匯入成功！');
+}
+
+// === Google Sheets 同步功能 ===
+function loadSyncConfig(){
+  const cfg=JSON.parse(localStorage.getItem('rambo_sync_cfg')||'{}');
+  if(cfg.url)$('syncUrl').value=cfg.url;
+  if(cfg.key)$('syncKey').value=cfg.key;
+}
+
+function saveSyncConfig(){
+  const url=$('syncUrl').value.trim();
+  const key=$('syncKey').value.trim();
+  if(!url||!key){toast('請填寫網址和金鑰');return;}
+  localStorage.setItem('rambo_sync_cfg',JSON.stringify({url,key}));
+  toast('設定已儲存');
+}
+
+async function syncFromGoogleSheets(){
+  const url=$('syncUrl').value.trim();
+  const key=$('syncKey').value.trim();
+  if(!url||!key){
+    $('syncStatus').textContent='⚠ 請先填寫網址和金鑰';
+    $('syncStatus').style.color='var(--red)';
+    return;
+  }
+
+  // 自動儲存設定
+  localStorage.setItem('rambo_sync_cfg',JSON.stringify({url,key}));
+
+  $('syncStatus').textContent='⏳ 連線中...';
+  $('syncStatus').style.color='var(--text2)';
+
+  try{
+    const fullUrl=url+(url.includes('?')?'&':'?')+'key='+encodeURIComponent(key);
+    const resp=await fetch(fullUrl);
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const data=await resp.json();
+
+    if(data.error){
+      $('syncStatus').textContent='❌ '+data.error;
+      $('syncStatus').style.color='var(--red)';
+      return;
+    }
+
+    if(!data.daily||!Array.isArray(data.daily)){
+      $('syncStatus').textContent='❌ 資料格式錯誤';
+      $('syncStatus').style.color='var(--red)';
+      return;
+    }
+
+    $('syncStatus').textContent=`✓ 收到 ${data.daily.length} 筆資料,寫入中...`;
+
+    // 寫入資料庫 (合併模式 - 不刪除既有資料)
+    let updated=0,added=0;
+    for(const rec of data.daily){
+      // 檢查是否已存在
+      const existing=await new Promise((res,rej)=>{
+        const tx=db.transaction('daily','readonly');
+        const idx=tx.objectStore('daily').index('s_d');
+        const q=idx.get([rec.store_id,rec.date]);
+        q.onsuccess=()=>res(q.result);
+        q.onerror=()=>rej(q.error);
+      });
+
+      if(existing){
+        // 更新既有記錄的營收欄位,保留其他欄位
+        existing.revenue=rec.revenue;
+        existing.ym=rec.ym;
+        await iPut('daily',existing);
+        updated++;
+      }else{
+        delete rec.id;
+        await iAdd('daily',rec);
+        added++;
+      }
+    }
+
+    $('syncStatus').textContent=`✅ 同步完成! 新增 ${added} 筆,更新 ${updated} 筆`;
+    $('syncStatus').style.color='var(--green)';
+
+    // 重新載入畫面
+    await loadAll();
+    toast('已從 Google Sheets 同步');
+
+    // 記錄同步時間
+    localStorage.setItem('rambo_last_sync',new Date().toISOString());
+
+  }catch(err){
+    console.error(err);
+    $('syncStatus').textContent='❌ 同步失敗: '+err.message;
+    $('syncStatus').style.color='var(--red)';
+  }
+}
+
+// 開啟同步 Modal 時自動載入設定
+const _origShowModal=showModal;
+showModal=function(id){
+  _origShowModal(id);
+  if(id==='syncMod')loadSyncConfig();
+};
+
+init();
+</script>
+</body>
+</html>
